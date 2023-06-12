@@ -155,7 +155,7 @@ test('navigate with side bar into article inside a map-topic inside a category',
   // the category, you'll be able to see the map-topic and the article
   // within.
   await page.goto('/')
-  await page.getByRole('link', { name: 'GitHub Actions' }).click()
+  await page.getByTestId('sidebar').getByRole('link', { name: 'GitHub Actions' }).click()
   await page.getByTestId('sidebar').getByRole('treeitem', { name: 'Category' }).click()
   await page.getByText('Map & Topic').click()
   await page.getByRole('link', { name: '<article>' }).click()
@@ -253,9 +253,8 @@ test.describe('test nav at different viewports', () => {
     await expect(page.getByRole('menuitemradio', { name: 'Enterprise Cloud' })).toBeVisible()
 
     // language picker is visible
-    // TODO: currently no languages enabled for headless tests
-    // await page.getByRole('button', { name: 'Select language: current language is English' }).click()
-    // await expect(page.getByRole('menuitemradio', { name: 'English' })).toBeVisible()
+    await page.getByRole('button', { name: 'Select language: current language is English' }).click()
+    await expect(page.getByRole('menuitemradio', { name: 'English' })).toBeVisible()
 
     // header sign up button is visible
     await expect(page.getByTestId('header-signup')).toBeVisible()
@@ -298,14 +297,11 @@ test.describe('test nav at different viewports', () => {
     await expect(page.getByRole('menuitemradio', { name: 'Enterprise Cloud' })).toBeVisible()
 
     // language picker is in mobile menu
-    // TODO: currently no languages enabled for headless tests
-    // await page.getByTestId('mobile-menu').click()
-    // await page.getByRole('button', { name: 'Select language: current language is English' }).click()
-    // await expect(page.getByRole('menuitemradio', { name: 'English' })).toBeVisible()
+    await page.getByTestId('mobile-menu').click()
+    await page.getByRole('button', { name: 'Select language: current language is English' }).click()
+    await expect(page.getByRole('menuitemradio', { name: 'English' })).toBeVisible()
 
     // sign up button is in mobile menu
-    await expect(page.getByTestId('header-signup')).not.toBeVisible()
-    await page.getByTestId('mobile-menu').click()
     await expect(page.getByTestId('mobile-signup')).toBeVisible()
 
     // hamburger button for sidebar overlay is visible
@@ -324,9 +320,8 @@ test.describe('test nav at different viewports', () => {
     // header sign-up button is not visible
     await expect(page.getByTestId('header-signup')).not.toBeVisible()
 
-    // TODO: currently no languages enabled for headless tests
     // language picker is not visible
-    // await expect(page.getByTestId('language-picker')).not.toBeVisible()
+    await expect(page.getByTestId('language-picker')).not.toBeVisible()
 
     // version picker is not visible
     await expect(
@@ -340,9 +335,8 @@ test.describe('test nav at different viewports', () => {
     await page.getByTestId('mobile-menu').click()
     await expect(page.getByTestId('open-mobile-menu').getByTestId('version-picker')).toBeVisible()
 
-    // TODO: currently no languages enabled for headless tests
     // language picker is in mobile menu
-    // await expect(page.getByTestId('open-mobile-menu').getByTestId('language-picker')).toBeVisible()
+    await expect(page.getByTestId('open-mobile-menu').getByTestId('language-picker')).toBeVisible()
 
     // sign up button is in mobile menu
     await expect(page.getByTestId('open-mobile-menu').getByTestId('version-picker')).toBeVisible()
@@ -351,6 +345,37 @@ test.describe('test nav at different viewports', () => {
     await expect(page.getByTestId('sidebar-hamburger')).toBeVisible()
     await page.getByTestId('sidebar-hamburger').click()
     await expect(page.getByTestId('sidebar-product-dialog')).toBeVisible()
+  })
+
+  test('do a search when the viewport is x-small', async ({ page }) => {
+    test.skip(!SEARCH_TESTS, 'No local Elasticsearch, no tests involving search')
+
+    page.setViewportSize({
+      width: 500,
+      height: 700,
+    })
+    await page.goto('/get-started/foo/bar')
+    await page.getByRole('button', { name: 'Open Search Bar' }).click()
+    await page.getByTestId('site-search-input').click()
+    await page.getByTestId('site-search-input').fill('serve playwright')
+    await page.getByTestId('site-search-input').press('Enter')
+    await expect(page).toHaveURL(/\/search\?query=serve\+playwright/)
+    await expect(page).toHaveTitle(/\d Search results for "serve playwright"/)
+  })
+
+  test('do a search when the viewport is medium', async ({ page }) => {
+    test.skip(!SEARCH_TESTS, 'No local Elasticsearch, no tests involving search')
+
+    page.setViewportSize({
+      width: 1000,
+      height: 700,
+    })
+    await page.goto('/get-started/foo/bar')
+    await page.getByTestId('site-search-input').click()
+    await page.getByTestId('site-search-input').fill('serve playwright')
+    await page.getByTestId('site-search-input').press('Enter')
+    await expect(page).toHaveURL(/\/search\?query=serve\+playwright/)
+    await expect(page).toHaveTitle(/\d Search results for "serve playwright"/)
   })
 })
 
@@ -422,5 +447,61 @@ test.describe('rest API reference pages', () => {
       .click()
     await expect(page).toHaveURL(/\/en\/rest\/actions\/artifacts\?apiVersion=/)
     await expect(page).toHaveTitle(/GitHub Actions Artifacts - GitHub Docs/)
+  })
+})
+
+test.describe('translations', () => {
+  test('view Japanese home page', async ({ page }) => {
+    await page.goto('/ja')
+    await expect(page.getByRole('heading', { name: '日本 GitHub Docs' })).toBeVisible()
+  })
+
+  test('switch to English from Japanese using banner on home page', async ({ page }) => {
+    await page.goto('/ja')
+    await page.getByRole('link', { name: 'English documentation' }).click()
+    await expect(page).toHaveURL('/en')
+    await expect(page.getByRole('heading', { name: 'GitHub Docs' })).toBeVisible()
+  })
+
+  test('switch to Japanese from English using widget on home page', async ({ page }) => {
+    await page.goto('/en')
+    await page.getByRole('button', { name: 'Select language: current language is English' }).click()
+    await page.getByRole('menuitemradio', { name: '日本語' }).click()
+    await expect(page).toHaveURL('/ja')
+    await expect(page.getByRole('heading', { name: '日本 GitHub Docs' })).toBeVisible()
+
+    // Having done this once, should now use a cookie to redirect back to Japanese
+    await page.goto('/')
+    await expect(page).toHaveURL('/ja')
+  })
+
+  test('switch to English from Japanese using banner on article', async ({ page }) => {
+    await page.goto('/ja/get-started/quickstart/hello-world')
+    await expect(page.getByRole('heading', { name: 'こんにちは World' })).toBeVisible()
+    await page.getByRole('link', { name: 'English documentation' }).click()
+    await expect(page).toHaveURL('/en/get-started/quickstart/hello-world')
+    await expect(page.getByRole('heading', { name: 'Hello World' })).toBeVisible()
+  })
+
+  test('switch to Japanese from English using widget on article', async ({ page }) => {
+    await page.goto('/get-started/quickstart/hello-world')
+    await page.getByRole('button', { name: 'Select language: current language is English' }).click()
+    await page.getByRole('menuitemradio', { name: '日本語' }).click()
+    await expect(page).toHaveURL('/ja/get-started/quickstart/hello-world')
+    await expect(page.getByRole('heading', { name: 'こんにちは World' })).toBeVisible()
+
+    // Having done this once, should now use a cookie to redirect
+    // back to Japanese.
+    // Playwright will cache this redirect, so we need to add something
+    // to "cache bust" the URL
+    const cb = `?cb=${Math.random()}`
+    await page.goto('/get-started/quickstart/hello-world' + cb)
+    await expect(page).toHaveURL('/ja/get-started/quickstart/hello-world' + cb)
+
+    // If you go, with the Japanese cookie, to the English page directly,
+    // it will offer a link to the Japanese URL in a banner.
+    await page.goto('/en/get-started/quickstart/hello-world')
+    await page.getByRole('link', { name: 'Japanese' }).click()
+    await expect(page).toHaveURL('/ja/get-started/quickstart/hello-world')
   })
 })
